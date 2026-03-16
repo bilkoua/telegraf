@@ -140,12 +140,7 @@ func (n *NodeInfo) Init() error {
 
 	// --- cache DMI -------------------------------------------------------
 	if n.collectDMI {
-		tags, err := n.initDMITags()
-		if err != nil {
-			n.Log.Warnf("Could not read DMI info: %v; node_dmi_info will not be emitted", err)
-		} else {
-			n.dmiTags = tags
-		}
+		n.dmiTags = n.initDMITags()
 	}
 
 	// --- cache uname -----------------------------------------------------
@@ -253,13 +248,13 @@ func unquoteOSReleaseValue(s string) string {
 
 // initDMITags reads every DMI file under /sys/class/dmi/id/ and returns
 // the tag map for node_dmi_info.  If the DMI directory does not exist at
-// all (ARM boards, containers) it returns nil, nil.
-func (n *NodeInfo) initDMITags() (map[string]string, error) {
+// all (ARM boards, containers) it returns nil.
+func (n *NodeInfo) initDMITags() map[string]string {
 	dmiDir := filepath.Join(n.PathSys, "class", "dmi", "id")
 
 	if _, err := os.Stat(dmiDir); os.IsNotExist(err) {
 		n.Log.Debugf("DMI directory %q does not exist, skipping node_dmi_info", dmiDir)
-		return nil, nil
+		return nil
 	}
 
 	tags := make(map[string]string, len(dmiFiles))
@@ -271,7 +266,7 @@ func (n *NodeInfo) initDMITags() (map[string]string, error) {
 		}
 		tags[entry.tag] = value
 	}
-	return tags, nil
+	return tags
 }
 
 // initUnameTags calls the uname(2) syscall and returns the tag map for

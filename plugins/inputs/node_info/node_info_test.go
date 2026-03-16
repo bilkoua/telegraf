@@ -251,7 +251,7 @@ func TestUtsFieldToString(t *testing.T) {
 	})
 	t.Run("nul at start produces empty string", func(t *testing.T) {
 		field := [4]int8{0, 'a', 'b', 'c'}
-		require.Equal(t, "", utsFieldToString(field[:]))
+		require.Empty(t, utsFieldToString(field[:]))
 	})
 	t.Run("no nul terminator fills whole array", func(t *testing.T) {
 		field := [4]int8{'a', 'b', 'c', 'd'}
@@ -259,7 +259,7 @@ func TestUtsFieldToString(t *testing.T) {
 	})
 	t.Run("empty array", func(t *testing.T) {
 		var field [0]int8
-		require.Equal(t, "", utsFieldToString(field[:]))
+		require.Empty(t, utsFieldToString(field[:]))
 	})
 }
 
@@ -308,7 +308,7 @@ func TestInitValidCollectSubset(t *testing.T) {
 func setupEtcDir(t *testing.T, content string) string {
 	t.Helper()
 	td := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(td, "os-release"), []byte(content), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(td, "os-release"), []byte(content), 0o600))
 	return td
 }
 
@@ -317,9 +317,9 @@ func setupEtcDir(t *testing.T, content string) string {
 func setupDMIDir(t *testing.T, files map[string]string) string {
 	t.Helper()
 	dmiDir := filepath.Join(t.TempDir(), "class", "dmi", "id")
-	require.NoError(t, os.MkdirAll(dmiDir, 0o755))
+	require.NoError(t, os.MkdirAll(dmiDir, 0o750))
 	for name, content := range files {
-		require.NoError(t, os.WriteFile(filepath.Join(dmiDir, name), []byte(content+"\n"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(dmiDir, name), []byte(content+"\n"), 0o600))
 	}
 	// Return three levels up: id → dmi → class → <root>
 	return filepath.Dir(filepath.Dir(filepath.Dir(dmiDir)))
@@ -386,12 +386,12 @@ func TestGatherOSInfoArch(t *testing.T) {
 	require.Equal(t, "arch", tags["id"])
 	require.Equal(t, "Arch Linux", tags["name"])
 	// Missing keys must appear as empty-string tags.
-	require.Equal(t, "", tags["version"])
-	require.Equal(t, "", tags["version_id"])
-	require.Equal(t, "", tags["version_codename"])
-	require.Equal(t, "", tags["variant"])
-	require.Equal(t, "", tags["variant_id"])
-	require.Equal(t, "", tags["id_like"])
+	require.Empty(t, tags["version"])
+	require.Empty(t, tags["version_id"])
+	require.Empty(t, tags["version_codename"])
+	require.Empty(t, tags["variant"])
+	require.Empty(t, tags["variant_id"])
+	require.Empty(t, tags["id_like"])
 
 	_, ok := metrics[0].GetField("info")
 	require.True(t, ok)
@@ -418,8 +418,8 @@ func TestGatherOSInfoAlpine(t *testing.T) {
 	tags := metrics[0].Tags()
 	require.Equal(t, "alpine", tags["id"])
 	require.Equal(t, "3.19.0", tags["version_id"])
-	require.Equal(t, "", tags["version"])
-	require.Equal(t, "", tags["version_codename"])
+	require.Empty(t, tags["version"])
+	require.Empty(t, tags["version_codename"])
 
 	_, ok := metrics[0].GetField("info")
 	require.True(t, ok)
@@ -447,7 +447,7 @@ func TestGatherOSInfoFedoraVariant(t *testing.T) {
 	require.Equal(t, "fedora", tags["id"])
 	require.Equal(t, "Server Edition", tags["variant"])
 	require.Equal(t, "server", tags["variant_id"])
-	require.Equal(t, "", tags["version_codename"])
+	require.Empty(t, tags["version_codename"])
 
 	_, ok := metrics[0].GetField("info")
 	require.True(t, ok)
@@ -459,8 +459,8 @@ func TestGatherOSInfoFallbackToUsrLib(t *testing.T) {
 	td := t.TempDir()
 	// Do NOT create td/os-release.
 	usrLib := filepath.Join(td, "..", "usr", "lib")
-	require.NoError(t, os.MkdirAll(usrLib, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(usrLib, "os-release"), []byte(sampleOSReleaseAlpine), 0o644))
+	require.NoError(t, os.MkdirAll(usrLib, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(usrLib, "os-release"), []byte(sampleOSReleaseAlpine), 0o600))
 
 	plugin := &NodeInfo{
 		PathEtc: td,
@@ -586,9 +586,9 @@ func TestGatherDMIInfoMissingFiles(t *testing.T) {
 	require.Equal(t, "TestProduct", tags["product_name"])
 	require.Equal(t, "TestSystemVendor", tags["system_vendor"])
 	// Missing files must produce empty tag values, not absent tags.
-	require.Equal(t, "", tags["bios_date"])
-	require.Equal(t, "", tags["chassis_vendor"])
-	require.Equal(t, "", tags["product_uuid"])
+	require.Empty(t, tags["bios_date"])
+	require.Empty(t, tags["chassis_vendor"])
+	require.Empty(t, tags["product_uuid"])
 
 	_, ok := metrics[0].GetField("info")
 	require.True(t, ok)
@@ -766,7 +766,7 @@ func TestReadFileTrimmed(t *testing.T) {
 
 	t.Run("normal value with newline", func(t *testing.T) {
 		p := filepath.Join(td, "normal")
-		require.NoError(t, os.WriteFile(p, []byte("SeaBIOS\n"), 0o644))
+		require.NoError(t, os.WriteFile(p, []byte("SeaBIOS\n"), 0o600))
 		v, err := readFileTrimmed(p)
 		require.NoError(t, err)
 		require.Equal(t, "SeaBIOS", v)
@@ -774,7 +774,7 @@ func TestReadFileTrimmed(t *testing.T) {
 
 	t.Run("value with extra whitespace", func(t *testing.T) {
 		p := filepath.Join(td, "whitespace")
-		require.NoError(t, os.WriteFile(p, []byte("  QEMU  \n"), 0o644))
+		require.NoError(t, os.WriteFile(p, []byte("  QEMU  \n"), 0o600))
 		v, err := readFileTrimmed(p)
 		require.NoError(t, err)
 		require.Equal(t, "QEMU", v)
@@ -782,10 +782,10 @@ func TestReadFileTrimmed(t *testing.T) {
 
 	t.Run("empty file", func(t *testing.T) {
 		p := filepath.Join(td, "empty")
-		require.NoError(t, os.WriteFile(p, []byte(""), 0o644))
+		require.NoError(t, os.WriteFile(p, []byte(""), 0o600))
 		v, err := readFileTrimmed(p)
 		require.NoError(t, err)
-		require.Equal(t, "", v)
+		require.Empty(t, v)
 	})
 
 	t.Run("missing file returns error", func(t *testing.T) {
