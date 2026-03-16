@@ -138,3 +138,28 @@ node_os,host=worker-01,id=debian,id_like=,name=Debian\ GNU/Linux,pretty_name=Deb
 node_dmi,bios_date=04/01/2014,bios_release=0.0,bios_vendor=SeaBIOS,bios_version=1.16.3-debian-1.16.3-2,board_asset_tag=,board_name=,board_serial=,board_vendor=,board_version=,chassis_asset_tag=,chassis_serial=,chassis_vendor=QEMU,chassis_version=pc-q35-10.0,host=worker-01,product_family=,product_name=Standard\ PC\ (Q35\ +\ ICH9\,\ 2009),product_serial=,product_sku=,product_uuid=,product_version=pc-q35-10.0,system_vendor=QEMU info=1i 1748000000000000000
 node_uname,domainname=(none),host=worker-01,machine=x86_64,nodename=worker-01.example.com,release=6.12.57+deb13-amd64,sysname=Linux,version=#1\ SMP\ PREEMPT_DYNAMIC\ Debian\ 6.12.57-1\ (2025-11-05) info=1i 1748000000000000000
 ```
+
+## Example Output (Prometheus)
+
+When using the [Prometheus output plugin][prom-output] or
+[Prometheus client plugin][prom-client], Telegraf converts each metric to
+Prometheus exposition format: the field name (`info`) is appended to the
+measurement name, producing `node_os_info`, `node_dmi_info`, and
+`node_uname_info` — identical to what `prometheus-node-exporter` exposes.
+
+[prom-output]: ../../../plugins/outputs/prometheus_client/README.md
+[prom-client]: ../../../plugins/outputs/prometheus_client/README.md
+
+```text
+# HELP node_os_info Telegraf collected metric
+# TYPE node_os_info gauge
+node_os_info{host="worker-01",id="debian",id_like="",name="Debian GNU/Linux",pretty_name="Debian GNU/Linux 13 (trixie)",variant="",variant_id="",version="13 (trixie)",version_codename="trixie",version_id="13"} 1 1748000000000
+
+# HELP node_dmi_info Telegraf collected metric
+# TYPE node_dmi_info gauge
+node_dmi_info{bios_date="04/01/2014",bios_release="0.0",bios_vendor="SeaBIOS",bios_version="1.16.3-debian-1.16.3-2",board_asset_tag="",board_name="",board_serial="",board_vendor="",board_version="",chassis_asset_tag="",chassis_serial="",chassis_vendor="QEMU",chassis_version="pc-q35-10.0",host="worker-01",product_family="",product_name="Standard PC (Q35 + ICH9, 2009)",product_serial="",product_sku="",product_uuid="",product_version="pc-q35-10.0",system_vendor="QEMU"} 1 1748000000000
+
+# HELP node_uname_info Telegraf collected metric
+# TYPE node_uname_info gauge
+node_uname_info{domainname="(none)",host="worker-01",machine="x86_64",nodename="worker-01.example.com",release="6.12.57+deb13-amd64",sysname="Linux",version="#1 SMP PREEMPT_DYNAMIC Debian 6.12.57-1 (2025-11-05)"} 1 1748000000000
+```
