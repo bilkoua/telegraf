@@ -102,7 +102,7 @@ func deleteEmpty(s []string) []string {
 // this abstraction is used for testing, so outputBuffer and args can be changed
 func runApp(args []string, outputBuffer io.Writer, pprof Server, c TelegrafConfig, m App) error {
 	cliFlags := cliFlags()
-	configHandlingFlags := make([]cli.Flag, 0, len(cliFlags)+10)
+	configHandlingFlags := make([]cli.Flag, 0, 10)
 	configHandlingFlags = append(configHandlingFlags,
 		&cli.StringSliceFlag{
 			Name:  "config",
