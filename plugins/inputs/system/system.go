@@ -15,68 +15,116 @@ import (
 	"github.com/shirou/gopsutil/v4/load"
 
 	"github.com/influxdata/telegraf"
+	"github.com/influxdata/telegraf/internal/choice"
 	"github.com/influxdata/telegraf/plugins/inputs"
 )
 
 //go:embed sample.conf
 var sampleConfig string
 
+var crossPlatformCollectors = []string{"load", "users", "n_cpus", "uptime"}
+
 type System struct {
+	Collect []string `toml:"collect"`
+	PathEtc string   `toml:"host_etc"`
+	PathSys string   `toml:"host_sys"`
+
 	Log telegraf.Logger `toml:"-"`
+
+	collectLoad   bool
+	collectUsers  bool
+	collectNCPUs  bool
+	collectUptime bool
+
+	collectOS    bool
+	collectDMI   bool
+	collectUname bool
+
+	osTags    map[string]string
+	dmiTags   map[string]string
+	unameTags map[string]string
 }
 
 func (*System) SampleConfig() string {
 	return sampleConfig
 }
 
+func (s *System) initCommon(available []string) error {
+	if len(s.Collect) == 0 {
+		s.Collect = available
+	}
+	if err := choice.CheckSlice(s.Collect, available); err != nil {
+		return fmt.Errorf("config option 'collect': %w", err)
+	}
+
+	s.collectLoad = choice.Contains("load", s.Collect)
+	s.collectUsers = choice.Contains("users", s.Collect)
+	s.collectNCPUs = choice.Contains("n_cpus", s.Collect)
+	s.collectUptime = choice.Contains("uptime", s.Collect)
+
+	return nil
+}
+
 func (s *System) Gather(acc telegraf.Accumulator) error {
-	loadavg, err := load.Avg()
-	if err != nil && !strings.Contains(err.Error(), "not implemented") {
-		return err
-	}
-
-	numLogicalCPUs, err := cpu.Counts(true)
-	if err != nil {
-		return err
-	}
-
-	numPhysicalCPUs, err := cpu.Counts(false)
-	if err != nil {
-		return err
-	}
-
-	fields := map[string]interface{}{
-		"load1":           loadavg.Load1,
-		"load5":           loadavg.Load5,
-		"load15":          loadavg.Load15,
-		"n_cpus":          numLogicalCPUs,
-		"n_physical_cpus": numPhysicalCPUs,
-	}
-
-	users, err := host.Users()
-	if err == nil {
-		fields["n_users"] = len(users)
-		fields["n_unique_users"] = findUniqueUsers(users)
-	} else if os.IsNotExist(err) {
-		s.Log.Debugf("Reading users: %s", err.Error())
-	} else if os.IsPermission(err) {
-		s.Log.Debug(err.Error())
-	}
-
 	now := time.Now()
-	acc.AddGauge("system", fields, nil, now)
+	fields := make(map[string]interface{})
 
-	uptime, err := host.Uptime()
-	if err != nil {
-		return err
+	if s.collectLoad {
+		loadavg, err := load.Avg()
+		if err != nil {
+			if !strings.Contains(err.Error(), "not implemented") {
+				return err
+			}
+		} else {
+			fields["load1"] = loadavg.Load1
+			fields["load5"] = loadavg.Load5
+			fields["load15"] = loadavg.Load15
+		}
 	}
 
-	acc.AddCounter("system", map[string]interface{}{
-		"uptime": uptime,
-	}, nil, now)
-	acc.AddFields("system", map[string]interface{}{
-		"uptime_format": formatUptime(uptime),
-	}, nil, now)
+	if s.collectNCPUs {
+		numLogicalCPUs, err := cpu.Counts(true)
+		if err != nil {
+			return err
+		}
+		numPhysicalCPUs, err := cpu.Counts(false)
+		if err != nil {
+			return err
+		}
+		fields["n_cpus"] = numLogicalCPUs
+		fields["n_physical_cpus"] = numPhysicalCPUs
+	}
+
+	if s.collectUsers {
+		users, err := host.Users()
+		if err == nil {
+			fields["n_users"] = len(users)
+			fields["n_unique_users"] = findUniqueUsers(users)
+		} else if os.IsNotExist(err) {
+			s.Log.Debugf("Reading users: %s", err.Error())
+		} else if os.IsPermission(err) {
+			s.Log.Debug(err.Error())
+		}
+	}
+
+	if len(fields) > 0 {
+		acc.AddGauge("system", fields, nil, now)
+	}
+
+	if s.collectUptime {
+		uptime, err := host.Uptime()
+		if err != nil {
+			return err
+		}
+		acc.AddCounter("system", map[string]interface{}{
+			"uptime": uptime,
+		}, nil, now)
+		acc.AddFields("system", map[string]interface{}{
+			"uptime_format": formatUptime(uptime),
+		}, nil, now)
+	}
+
+	s.gatherPlatformInfo(acc)
 
 	return nil
 }
@@ -88,7 +136,6 @@ func findUniqueUsers(userStats []host.UserStat) int {
 			uniqueUsers[userstat.User] = true
 		}
 	}
-
 	return len(uniqueUsers)
 }
 
@@ -97,7 +144,6 @@ func formatUptime(uptime uint64) string {
 	w := bufio.NewWriter(buf)
 
 	days := uptime / (60 * 60 * 24)
-
 	if days != 0 {
 		s := ""
 		if days > 1 {

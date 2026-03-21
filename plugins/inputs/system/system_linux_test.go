@@ -1,6 +1,6 @@
 //go:build linux
 
-package node_info
+package system
 
 import (
 	"os"
@@ -263,18 +263,18 @@ func TestUtsFieldToString(t *testing.T) {
 	})
 }
 
-func TestInitDefaults(t *testing.T) {
-	plugin := &NodeInfo{
+func TestSystemInitDefaults(t *testing.T) {
+	plugin := &System{
 		Log: testutil.Logger{},
 	}
 	require.NoError(t, plugin.Init())
 	require.Equal(t, defaultHostEtc, plugin.PathEtc)
 	require.Equal(t, defaultHostSys, plugin.PathSys)
-	require.Equal(t, []string{"os", "dmi", "uname"}, plugin.Collect)
+	require.Equal(t, []string{"load", "users", "n_cpus", "uptime", "os", "dmi", "uname"}, plugin.Collect)
 }
 
-func TestInitCustomPaths(t *testing.T) {
-	plugin := &NodeInfo{
+func TestSystemInitCustomPaths(t *testing.T) {
+	plugin := &System{
 		PathEtc: "/custom/etc",
 		PathSys: "/custom/sys",
 		Log:     testutil.Logger{},
@@ -284,18 +284,18 @@ func TestInitCustomPaths(t *testing.T) {
 	require.Equal(t, "/custom/sys", plugin.PathSys)
 }
 
-func TestInitInvalidCollectOption(t *testing.T) {
-	plugin := &NodeInfo{
-		Collect: []string{"os", "bogus"},
+func TestSystemInitInvalidCollectOption(t *testing.T) {
+	plugin := &System{
+		Collect: []string{"load", "bogus"},
 		Log:     testutil.Logger{},
 	}
 	err := plugin.Init()
 	require.Error(t, err)
-	require.ErrorContains(t, err, "invalid collect option")
+	require.ErrorContains(t, err, "config option 'collect'")
 }
 
-func TestInitValidCollectSubset(t *testing.T) {
-	plugin := &NodeInfo{
+func TestSystemInitValidCollectSubset(t *testing.T) {
+	plugin := &System{
 		Collect: []string{"uname"},
 		Log:     testutil.Logger{},
 	}
@@ -304,7 +304,7 @@ func TestInitValidCollectSubset(t *testing.T) {
 }
 
 // setupEtcDir creates a temporary etc directory with the given os-release
-// content.  Returns the path to the tmp root that serves as host_etc.
+// content. Returns the path to the tmp root that serves as host_etc.
 func setupEtcDir(t *testing.T, content string) string {
 	t.Helper()
 	td := t.TempDir()
@@ -328,7 +328,7 @@ func setupDMIDir(t *testing.T, files map[string]string) string {
 func TestGatherOSInfoDebian(t *testing.T) {
 	etcDir := setupEtcDir(t, sampleOSReleaseDebian)
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: etcDir,
 		PathSys: etcDir, // unused for this test but must be set
 		Collect: []string{"os"},
@@ -342,7 +342,7 @@ func TestGatherOSInfoDebian(t *testing.T) {
 
 	expected := []telegraf.Metric{
 		metric.New(
-			"node_os",
+			"system_os",
 			map[string]string{
 				"id":               "debian",
 				"id_like":          "",
@@ -360,14 +360,21 @@ func TestGatherOSInfoDebian(t *testing.T) {
 		),
 	}
 
-	testutil.RequireMetricsEqual(t, expected, acc.GetTelegrafMetrics(), testutil.IgnoreTime())
+	// Filter to only system_os metrics to avoid interference from system metrics.
+	var nodeOSMetrics []telegraf.Metric
+	for _, m := range acc.GetTelegrafMetrics() {
+		if m.Name() == "system_os" {
+			nodeOSMetrics = append(nodeOSMetrics, m)
+		}
+	}
+	testutil.RequireMetricsEqual(t, expected, nodeOSMetrics, testutil.IgnoreTime())
 }
 
 func TestGatherOSInfoArch(t *testing.T) {
 	// Arch Linux has no VERSION, VERSION_ID, VERSION_CODENAME, VARIANT keys.
 	etcDir := setupEtcDir(t, sampleOSReleaseArch)
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: etcDir,
 		PathSys: etcDir,
 		Collect: []string{"os"},
@@ -379,7 +386,7 @@ func TestGatherOSInfoArch(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	metrics := acc.GetTelegrafMetrics()
+	metrics := filterMetrics(acc.GetTelegrafMetrics(), "system_os")
 	require.Len(t, metrics, 1)
 
 	tags := metrics[0].Tags()
@@ -400,7 +407,7 @@ func TestGatherOSInfoArch(t *testing.T) {
 func TestGatherOSInfoAlpine(t *testing.T) {
 	etcDir := setupEtcDir(t, sampleOSReleaseAlpine)
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: etcDir,
 		PathSys: etcDir,
 		Collect: []string{"os"},
@@ -412,7 +419,7 @@ func TestGatherOSInfoAlpine(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	metrics := acc.GetTelegrafMetrics()
+	metrics := filterMetrics(acc.GetTelegrafMetrics(), "system_os")
 	require.Len(t, metrics, 1)
 
 	tags := metrics[0].Tags()
@@ -428,7 +435,7 @@ func TestGatherOSInfoAlpine(t *testing.T) {
 func TestGatherOSInfoFedoraVariant(t *testing.T) {
 	etcDir := setupEtcDir(t, sampleOSReleaseFedoraServer)
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: etcDir,
 		PathSys: etcDir,
 		Collect: []string{"os"},
@@ -440,7 +447,7 @@ func TestGatherOSInfoFedoraVariant(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	metrics := acc.GetTelegrafMetrics()
+	metrics := filterMetrics(acc.GetTelegrafMetrics(), "system_os")
 	require.Len(t, metrics, 1)
 
 	tags := metrics[0].Tags()
@@ -462,7 +469,7 @@ func TestGatherOSInfoFallbackToUsrLib(t *testing.T) {
 	require.NoError(t, os.MkdirAll(usrLib, 0o750))
 	require.NoError(t, os.WriteFile(filepath.Join(usrLib, "os-release"), []byte(sampleOSReleaseAlpine), 0o600))
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: td,
 		PathSys: td,
 		Collect: []string{"os"},
@@ -474,7 +481,7 @@ func TestGatherOSInfoFallbackToUsrLib(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	metrics := acc.GetTelegrafMetrics()
+	metrics := filterMetrics(acc.GetTelegrafMetrics(), "system_os")
 	require.Len(t, metrics, 1)
 	require.Equal(t, "alpine", metrics[0].Tags()["id"])
 }
@@ -482,7 +489,7 @@ func TestGatherOSInfoFallbackToUsrLib(t *testing.T) {
 func TestGatherOSInfoMissingBothFiles(t *testing.T) {
 	td := t.TempDir()
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: td,
 		PathSys: td,
 		Collect: []string{"os"},
@@ -496,8 +503,8 @@ func TestGatherOSInfoMissingBothFiles(t *testing.T) {
 	var acc testutil.Accumulator
 	require.NoError(t, plugin.Gather(&acc))
 
-	// No metrics and no errors — the warning was already logged during Init.
-	require.Empty(t, acc.GetTelegrafMetrics())
+	// No system_os metric and no errors — the warning was already logged during Init.
+	require.Empty(t, filterMetrics(acc.GetTelegrafMetrics(), "system_os"))
 	require.Empty(t, acc.Errors)
 }
 
@@ -527,7 +534,7 @@ func TestGatherDMIInfo(t *testing.T) {
 
 	etcDir := setupEtcDir(t, sampleOSReleaseDebian)
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: etcDir,
 		PathSys: sysRoot,
 		Collect: []string{"dmi"},
@@ -539,9 +546,9 @@ func TestGatherDMIInfo(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	metrics := acc.GetTelegrafMetrics()
+	metrics := filterMetrics(acc.GetTelegrafMetrics(), "system_dmi")
 	require.Len(t, metrics, 1)
-	require.Equal(t, "node_dmi", metrics[0].Name())
+	require.Equal(t, "system_dmi", metrics[0].Name())
 
 	tags := metrics[0].Tags()
 	require.Equal(t, "04/01/2014", tags["bios_date"])
@@ -566,7 +573,7 @@ func TestGatherDMIInfoMissingFiles(t *testing.T) {
 		"sys_vendor":   "TestSystemVendor",
 	})
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathSys: sysRoot,
 		PathEtc: sysRoot,
 		Collect: []string{"dmi"},
@@ -578,7 +585,7 @@ func TestGatherDMIInfoMissingFiles(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	metrics := acc.GetTelegrafMetrics()
+	metrics := filterMetrics(acc.GetTelegrafMetrics(), "system_dmi")
 	require.Len(t, metrics, 1)
 
 	tags := metrics[0].Tags()
@@ -598,7 +605,7 @@ func TestGatherDMIInfoDirectoryMissing(t *testing.T) {
 	// Simulate ARM board or container where /sys/class/dmi/id/ is absent.
 	td := t.TempDir()
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathSys: td,
 		PathEtc: td,
 		Collect: []string{"dmi"},
@@ -609,13 +616,13 @@ func TestGatherDMIInfoDirectoryMissing(t *testing.T) {
 	var acc testutil.Accumulator
 	require.NoError(t, plugin.Gather(&acc))
 
-	// No metric should be emitted and no error should be accumulated.
+	// No system_dmi metric should be emitted and no error should be accumulated.
 	require.Empty(t, acc.Errors)
-	require.Empty(t, acc.GetTelegrafMetrics())
+	require.Empty(t, filterMetrics(acc.GetTelegrafMetrics(), "system_dmi"))
 }
 
 func TestGatherUnameInfo(t *testing.T) {
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: t.TempDir(),
 		PathSys: t.TempDir(),
 		Collect: []string{"uname"},
@@ -627,9 +634,9 @@ func TestGatherUnameInfo(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	metrics := acc.GetTelegrafMetrics()
+	metrics := filterMetrics(acc.GetTelegrafMetrics(), "system_uname")
 	require.Len(t, metrics, 1)
-	require.Equal(t, "node_uname", metrics[0].Name())
+	require.Equal(t, "system_uname", metrics[0].Name())
 
 	tags := metrics[0].Tags()
 
@@ -652,7 +659,7 @@ func TestGatherUnameInfo(t *testing.T) {
 func TestCollectOnlyOS(t *testing.T) {
 	etcDir := setupEtcDir(t, sampleOSReleaseDebian)
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: etcDir,
 		PathSys: t.TempDir(),
 		Collect: []string{"os"},
@@ -664,14 +671,14 @@ func TestCollectOnlyOS(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	names := metricNames(acc.GetTelegrafMetrics())
-	require.Contains(t, names, "node_os")
-	require.NotContains(t, names, "node_dmi")
-	require.NotContains(t, names, "node_uname")
+	names := metricNameSet(acc.GetTelegrafMetrics())
+	require.Contains(t, names, "system_os")
+	require.NotContains(t, names, "system_dmi")
+	require.NotContains(t, names, "system_uname")
 }
 
 func TestCollectOnlyUname(t *testing.T) {
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: t.TempDir(),
 		PathSys: t.TempDir(),
 		Collect: []string{"uname"},
@@ -683,10 +690,10 @@ func TestCollectOnlyUname(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	names := metricNames(acc.GetTelegrafMetrics())
-	require.Contains(t, names, "node_uname")
-	require.NotContains(t, names, "node_os")
-	require.NotContains(t, names, "node_dmi")
+	names := metricNameSet(acc.GetTelegrafMetrics())
+	require.Contains(t, names, "system_uname")
+	require.NotContains(t, names, "system_os")
+	require.NotContains(t, names, "system_dmi")
 }
 
 func TestCollectOnlyDMI(t *testing.T) {
@@ -694,7 +701,7 @@ func TestCollectOnlyDMI(t *testing.T) {
 		"sys_vendor": "TestVendor",
 	})
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: t.TempDir(),
 		PathSys: sysRoot,
 		Collect: []string{"dmi"},
@@ -706,13 +713,13 @@ func TestCollectOnlyDMI(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	names := metricNames(acc.GetTelegrafMetrics())
-	require.Contains(t, names, "node_dmi")
-	require.NotContains(t, names, "node_os")
-	require.NotContains(t, names, "node_uname")
+	names := metricNameSet(acc.GetTelegrafMetrics())
+	require.Contains(t, names, "system_dmi")
+	require.NotContains(t, names, "system_os")
+	require.NotContains(t, names, "system_uname")
 }
 
-func TestGatherAllMetrics(t *testing.T) {
+func TestGatherAllMetricGroups(t *testing.T) {
 	etcDir := setupEtcDir(t, sampleOSReleaseDebian)
 
 	sysRoot := setupDMIDir(t, map[string]string{
@@ -720,7 +727,7 @@ func TestGatherAllMetrics(t *testing.T) {
 		"product_name": "Standard PC",
 	})
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: etcDir,
 		PathSys: sysRoot,
 		Log:     testutil.Logger{},
@@ -731,17 +738,17 @@ func TestGatherAllMetrics(t *testing.T) {
 	require.NoError(t, plugin.Gather(&acc))
 	require.Empty(t, acc.Errors)
 
-	names := metricNames(acc.GetTelegrafMetrics())
-	require.Contains(t, names, "node_os")
-	require.Contains(t, names, "node_dmi")
-	require.Contains(t, names, "node_uname")
+	names := metricNameSet(acc.GetTelegrafMetrics())
+	require.Contains(t, names, "system_os")
+	require.Contains(t, names, "system_dmi")
+	require.Contains(t, names, "system_uname")
 }
 
 func TestGatherMultipleCollectRuns(t *testing.T) {
 	// Verify that repeated Gather() calls produce consistent results.
 	etcDir := setupEtcDir(t, sampleOSReleaseDebian)
 
-	plugin := &NodeInfo{
+	plugin := &System{
 		PathEtc: etcDir,
 		PathSys: t.TempDir(),
 		Collect: []string{"os", "uname"},
@@ -754,10 +761,10 @@ func TestGatherMultipleCollectRuns(t *testing.T) {
 		require.NoError(t, plugin.Gather(&acc))
 		require.Empty(t, acc.Errors)
 
-		names := metricNames(acc.GetTelegrafMetrics())
-		require.Contains(t, names, "node_os")
-		require.Contains(t, names, "node_uname")
-		require.NotContains(t, names, "node_dmi")
+		names := metricNameSet(acc.GetTelegrafMetrics())
+		require.Contains(t, names, "system_os")
+		require.Contains(t, names, "system_uname")
+		require.NotContains(t, names, "system_dmi")
 	}
 }
 
@@ -794,10 +801,22 @@ func TestReadFileTrimmed(t *testing.T) {
 	})
 }
 
-func metricNames(metrics []telegraf.Metric) []string {
-	names := make([]string, 0, len(metrics))
+// filterMetrics filters a slice of metrics by name.
+func filterMetrics(metrics []telegraf.Metric, name string) []telegraf.Metric {
+	var out []telegraf.Metric
 	for _, m := range metrics {
-		names = append(names, m.Name())
+		if m.Name() == name {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// metricNameSet returns the set of unique metric names present in metrics.
+func metricNameSet(metrics []telegraf.Metric) map[string]struct{} {
+	names := make(map[string]struct{}, len(metrics))
+	for _, m := range metrics {
+		names[m.Name()] = struct{}{}
 	}
 	return names
 }
