@@ -109,17 +109,17 @@ distributions provide every key; missing keys are set to empty strings
 internally (visible in Prometheus output, omitted in InfluxDB line protocol).
 Each measurement has a single field `info` (integer gauge, always `1`).
 
-| Tag                | Description                                      | Example              |
-|--------------------|--------------------------------------------------|----------------------|
-| `id`               | Distribution identifier                          | `debian`             |
-| `id_like`          | Space-separated list of related distribution IDs | `rhel centos fedora` |
-| `name`             | Human-readable distribution name                 | `Debian GNU/Linux`   |
-| `pretty_name`      | Human-readable name including version            | `Debian GNU/Linux 13 (trixie)` |
-| `variant`          | Variant of the distribution (if any)             | `Server Edition`     |
-| `variant_id`       | Machine-readable variant identifier              | `server`             |
-| `version`          | Version string                                   | `13 (trixie)`        |
-| `version_codename` | Release codename                                 | `trixie`             |
-| `version_id`       | Machine-readable version identifier              | `13`                 |
+| Tag                | Description                                      | Example                          |
+|--------------------|--------------------------------------------------|----------------------------------|
+| `id`               | Distribution identifier                          | `debian`                         |
+| `id_like`          | Space-separated list of related distribution IDs | `rhel centos fedora`             |
+| `name`             | Human-readable distribution name                 | `Debian GNU/Linux`               |
+| `pretty_name`      | Human-readable name including version            | `Debian GNU/Linux 13 (trixie)`   |
+| `variant`          | Variant of the distribution (if any)             | `Server Edition`                 |
+| `variant_id`       | Machine-readable variant identifier              | `server`                         |
+| `version`          | Version string                                   | `13 (trixie)`                    |
+| `version_codename` | Release codename                                 | `trixie`                         |
+| `version_id`       | Machine-readable version identifier              | `13`                             |
 
 [os-release]: https://www.freedesktop.org/software/systemd/man/os-release.html
 
@@ -132,28 +132,28 @@ are set to empty strings internally (visible in Prometheus output, omitted in
 InfluxDB line protocol).
 Each measurement has a single field `info` (integer gauge, always `1`).
 
-| Tag                 | Description                           | Example                          |
-|---------------------|---------------------------------------|----------------------------------|
-| `bios_date`         | BIOS release date                     | `04/01/2014`                     |
-| `bios_release`      | BIOS major.minor release number       | `0.0`                            |
-| `bios_vendor`       | BIOS vendor name                      | `SeaBIOS`                        |
-| `bios_version`      | BIOS version string                   | `1.16.3-debian-1.16.3-2`        |
-| `board_asset_tag`   | Baseboard asset tag                   | `board-asset-tag`                |
-| `board_name`        | Baseboard product name                | `Standard PC (Q35 + ICH9, 2009)` |
-| `board_serial`      | Baseboard serial number *(root only)* | `board-serial-001`               |
-| `board_vendor`      | Baseboard manufacturer                | `QEMU`                           |
-| `board_version`     | Baseboard version                     | `pc-q35-10.0`                    |
-| `chassis_asset_tag` | Chassis asset tag                     | `chassis-asset-tag`              |
-| `chassis_serial`    | Chassis serial number *(root only)*   | `chassis-serial-001`             |
-| `chassis_vendor`    | Chassis manufacturer                  | `QEMU`                           |
-| `chassis_version`   | Chassis version                       | `pc-q35-10.0`                    |
-| `product_family`    | Product family                        | `QEMU Virtual Machine`           |
-| `product_name`      | Product name                          | `Standard PC (Q35 + ICH9, 2009)` |
-| `product_serial`    | Product serial number *(root only)*   | `product-serial-001`             |
-| `product_sku`       | Product SKU number                    | `pc-q35-10.0`                    |
-| `product_uuid`      | Product UUID *(root only)*            | `11111111-2222-3333-4444-555555555555` |
-| `product_version`   | Product version                       | `pc-q35-10.0`                    |
-| `system_vendor`     | System manufacturer                   | `QEMU`                           |
+| Tag                 | Description                           | Example                                  |
+|---------------------|---------------------------------------|------------------------------------------|
+| `bios_date`         | BIOS release date                     | `04/01/2014`                             |
+| `bios_release`      | BIOS major.minor release number       | `0.0`                                    |
+| `bios_vendor`       | BIOS vendor name                      | `SeaBIOS`                                |
+| `bios_version`      | BIOS version string                   | `1.16.3-debian-1.16.3-2`                 |
+| `board_asset_tag`   | Baseboard asset tag                   | `board-asset-tag`                        |
+| `board_name`        | Baseboard product name                | `Standard PC (Q35 + ICH9, 2009)`         |
+| `board_serial`      | Baseboard serial number *(root only)* | `board-serial-001`                       |
+| `board_vendor`      | Baseboard manufacturer                | `QEMU`                                   |
+| `board_version`     | Baseboard version                     | `pc-q35-10.0`                            |
+| `chassis_asset_tag` | Chassis asset tag                     | `chassis-asset-tag`                      |
+| `chassis_serial`    | Chassis serial number *(root only)*   | `chassis-serial-001`                     |
+| `chassis_vendor`    | Chassis manufacturer                  | `QEMU`                                   |
+| `chassis_version`   | Chassis version                       | `pc-q35-10.0`                            |
+| `product_family`    | Product family                        | `QEMU Virtual Machine`                   |
+| `product_name`      | Product name                          | `Standard PC (Q35 + ICH9, 2009)`         |
+| `product_serial`    | Product serial number *(root only)*   | `product-serial-001`                     |
+| `product_sku`       | Product SKU number                    | `pc-q35-10.0`                            |
+| `product_uuid`      | Product UUID *(root only)*            | `11111111-2222-3333-4444-555555555555`   |
+| `product_version`   | Product version                       | `pc-q35-10.0`                            |
+| `system_vendor`     | System manufacturer                   | `QEMU`                                   |
 
 [smbios]: https://www.dmtf.org/standards/smbios
 
@@ -162,14 +162,14 @@ Each measurement has a single field `info` (integer gauge, always `1`).
 Sourced from the `uname(2)` system call.
 Each measurement has a single field `info` (integer gauge, always `1`).
 
-| Tag          | Description                                    | Example                                   |
-|--------------|------------------------------------------------|-------------------------------------------|
-| `sysname`    | Operating system name                          | `Linux`                                   |
-| `nodename`   | Node hostname                                  | `worker-01.example.com`                   |
-| `release`    | Kernel release string                          | `6.12.57+deb13-amd64`                     |
-| `version`    | Kernel version / build info                    | `#1 SMP PREEMPT_DYNAMIC Debian 6.12.57-1` |
-| `machine`    | Hardware architecture                          | `x86_64`                                  |
-| `domainname` | NIS domain name (`(none)` when not configured) | `(none)`                                  |
+| Tag          | Description                                    | Example                                      |
+|--------------|------------------------------------------------|----------------------------------------------|
+| `sysname`    | Operating system name                          | `Linux`                                      |
+| `nodename`   | Node hostname                                  | `worker-01.example.com`                      |
+| `release`    | Kernel release string                          | `6.12.57+deb13-amd64`                        |
+| `version`    | Kernel version / build info                    | `#1 SMP PREEMPT_DYNAMIC Debian 6.12.57-1`    |
+| `machine`    | Hardware architecture                          | `x86_64`                                     |
+| `domainname` | NIS domain name (`(none)` when not configured) | `(none)`                                     |
 
 ## Example Output
 

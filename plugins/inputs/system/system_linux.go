@@ -21,6 +21,16 @@ const (
 	defaultHostSys = "/sys"
 )
 
+type platformData struct {
+	collectOS    bool
+	collectDMI   bool
+	collectUname bool
+
+	osTags    map[string]string
+	dmiTags   map[string]string
+	unameTags map[string]string
+}
+
 var linuxCollectors = []string{"os", "dmi", "uname"}
 
 var dmiFiles = []struct {

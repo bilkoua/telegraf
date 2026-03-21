@@ -36,13 +36,7 @@ type System struct {
 	collectNCPUs  bool
 	collectUptime bool
 
-	collectOS    bool
-	collectDMI   bool
-	collectUname bool
-
-	osTags    map[string]string
-	dmiTags   map[string]string
-	unameTags map[string]string
+	platformData
 }
 
 func (*System) SampleConfig() string {
