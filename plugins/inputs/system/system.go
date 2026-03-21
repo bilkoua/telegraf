@@ -36,7 +36,7 @@ type System struct {
 	collectNCPUs  bool
 	collectUptime bool
 
-	platformData
+	platformData //nolint:unused // for OS-specific usage
 }
 
 func (*System) SampleConfig() string {

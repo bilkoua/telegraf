@@ -21,7 +21,7 @@ const (
 	defaultHostSys = "/sys"
 )
 
-type platformData struct {
+type platformData struct { //nolint:unused // used on Linux, needed for System struct
 	collectOS    bool
 	collectDMI   bool
 	collectUname bool
